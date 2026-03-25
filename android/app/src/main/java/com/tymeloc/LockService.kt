@@ -122,8 +122,8 @@ class LockService : Service() {
       }
 
       root.addView(TextView(this).apply {
-        text = "LOCKDOWN"
-        setTextColor(Color.parseColor("#2a2a4a"))
+        text = "DEVICE LOCKDOWN"
+        setTextColor(Color.parseColor("#64648e"))
         textSize = 11f
         letterSpacing = 0.3f
         gravity = Gravity.CENTER
@@ -149,7 +149,7 @@ class LockService : Service() {
 
       root.addView(TextView(this).apply {
         text = "unlocks at $unlockTime"
-        setTextColor(Color.parseColor("#2a2a4a"))
+        setTextColor(Color.parseColor("#64648e"))
         textSize = 14f
         typeface = Typeface.create("sans-serif-light", Typeface.NORMAL)
         gravity = Gravity.CENTER
@@ -159,7 +159,7 @@ class LockService : Service() {
 
       root.addView(TextView(this).apply {
         text = "stay focused."
-        setTextColor(Color.parseColor("#18183a"))
+        setTextColor(Color.parseColor("#535370"))
         textSize = 13f
         letterSpacing = 0.08f
         gravity = Gravity.CENTER

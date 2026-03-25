@@ -9,12 +9,15 @@ import {
 } from 'react-native';
 import { useLockStore } from '../store/useLockStore';
 import { useCountdown } from '../hooks/useCountdown';
+import { ScheduleListScreen } from './ScheduleListScreen';
+import { useScheduler } from '../hooks/useScheduler';
 
 
 
 const { LockModule } = NativeModules;
 
 const DURATIONS = [
+  // { label: '1 min',  ms: 1 * 60 * 1000 },
   { label: '30 min',  ms: 30 * 60 * 1000 },
   { label: '1 hour',  ms: 60 * 60 * 1000 },
   { label: '2 hours', ms: 2 * 60 * 60 * 1000 },
@@ -32,9 +35,21 @@ const DURATIONS = [
 
 export function HomeScreen() {
   const { phoneLockUntil, lockPhone, unlockPhone, isLocked } = useLockStore();
-  const { display, done } = useCountdown(phoneLockUntil);
+  const { done } = useCountdown(phoneLockUntil);
   const [hasOverlay, setHasOverlay] = useState(false);
-  const locked = isLocked();
+  const [activeTab, setActiveTab] = useState<'lock' | 'schedule'>('lock');
+  const locked = isLocked(); 
+  console.log('Render HomeScreen - locked:', locked, 'phoneLockUntil:', phoneLockUntil, 'done:', done);
+
+
+  //Reset lock state if we detect a past lock time (e.g. due to reboot or manual time change)
+// useEffect(() => {
+//   if (phoneLockUntil && phoneLockUntil > Date.now()) {
+//     console.log('Past lock detected, resetting');
+//     unlockPhone();
+//     LockModule.stopLockService();
+//   }
+// }, [phoneLockUntil, unlockPhone]);
 
   // Check overlay permission on mount and when returning from Settings
   useEffect(() => {
@@ -89,30 +104,58 @@ const handleLock = async (durationMs: number) => {
   }
 };
 
-  const unlockTime = phoneLockUntil
-    ? new Date(phoneLockUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
-    : null;
+  // const unlockTime = phoneLockUntil
+  //   ? new Date(phoneLockUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+  //   : null;
+  useScheduler();
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+   
+      <View style={styles.motherContainer}>
       <Text style={styles.appName}>Tymeloc</Text>
 
-      {locked ? (
-        // ── Active lock view ────────────────────────────────────────────────
-        <View style={styles.activeCard}>
-          <Text style={styles.activeLabel}>LOCKDOWN ACTIVE</Text>
-          <Text style={styles.countdown}>{display}</Text>
-          <Text style={styles.unlockTime}>unlocks at {unlockTime}</Text>
-        </View>
-      ) : (
-        // ── Duration picker ─────────────────────────────────────────────────
+      {/* Tab bar */}
+    <View style={styles.tabBar}>
+      <TouchableOpacity
+        style={[styles.tab, activeTab === 'lock' && styles.tabActive]}
+        onPress={() => setActiveTab('lock')}
+      >
+        <Text style={[styles.tabText, activeTab === 'lock' && styles.tabTextActive]}>
+          Lock
+        </Text>
+      </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.tab, activeTab === 'schedule' && styles.tabActive]}
+        onPress={() => setActiveTab('schedule')}
+      >
+        <Text style={[styles.tabText, activeTab === 'schedule' && styles.tabTextActive]}>
+          Schedule
+        </Text>
+      </TouchableOpacity>
+    </View>
+
+    {activeTab === 'lock' ? (
+      <ScrollView contentContainerStyle={styles.container}>
+        {/* <Text style={styles.appName}>Tymeloc</Text> */}
         <View style={styles.pickerSection}>
           <Text style={styles.sectionLabel}>Lock phone for</Text>
           {DURATIONS.map(d => (
             <TouchableOpacity
               key={d.label}
               style={styles.durationBtn}
-              onPress={() => handleLock(d.ms)}
+              // onPress={() => 
+              //   handleLock(d.ms)}
+              onPress={() => {
+  Alert.alert(
+    'Confirm Lock',
+    `Are you sure you want to lock your phone for ${d.label}?`,
+    [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Yes', onPress: () => handleLock(d.ms) }
+    ],
+    { cancelable: true }
+  );
+}}
               disabled={locked}
               activeOpacity={0.7}
             >
@@ -120,40 +163,52 @@ const handleLock = async (durationMs: number) => {
             </TouchableOpacity>
           ))}
         </View>
-      )}
-
-      {!hasOverlay && (
-        <TouchableOpacity
-          style={styles.permissionBanner}
-          onPress={() => LockModule.requestOverlayPermission()}
-        >
-          <Text style={styles.permissionText}>
-            Tap to grant overlay permission required for locking
-          </Text>
-        </TouchableOpacity>
-      )}
-    </ScrollView>
+        {!hasOverlay && (
+          <TouchableOpacity
+            style={styles.permissionBanner}
+            onPress={() => LockModule.requestOverlayPermission()}
+          >
+            <Text style={styles.permissionText}>
+              Tap to grant overlay permission required for locking
+            </Text>
+          </TouchableOpacity>
+        )}
+      </ScrollView>
+    ) : (
+      <ScheduleListScreen />
+    )}
+    </View>
+   
   );
 }
 
 const styles = StyleSheet.create({
+  motherContainer: {
+    flex: 1,
+    backgroundColor: '#07070f',
+    paddingTop: 10,
+    paddingBottom: 10,
+  },
   container: {
-    flexGrow: 1,
     backgroundColor: '#07070f',
     padding: 28,
-    paddingTop: 70,
+    paddingTop: 30,
+    paddingBottom: 130,
     alignItems: 'center',
   },
   appName: {
     color: '#3d3a6e',
     fontSize: 13,
+    alignSelf: 'center',
     letterSpacing: 4,
+    padding: 20,
     textTransform: 'uppercase',
-    marginBottom: 60,
+    // marginBottom: 0,
   },
   activeCard: {
     alignItems: 'center',
     gap: 16,
+    
   },
   activeLabel: {
     color: '#4a4870',
@@ -173,6 +228,7 @@ const styles = StyleSheet.create({
   pickerSection: {
     width: '100%',
     gap: 12,
+     minHeight: '100%',
   },
   sectionLabel: {
     color: '#4a4870',
@@ -206,5 +262,32 @@ const styles = StyleSheet.create({
     color: '#EF9F27',
     fontSize: 13,
     textAlign: 'center',
+  },
+
+  tabBar: {
+    flexDirection: 'row',
+    backgroundColor: '#07070f',
+    paddingTop: 20,
+    paddingHorizontal: 28,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1a1a2e',
+  },
+  tab: {
+    flex: 1,
+    paddingVertical: 14,
+    alignItems: 'center',
+  },
+  tabActive: {
+    borderBottomWidth: 1,
+    borderBottomColor: '#534AB7',
+  },
+  tabText: {
+    color: '#4a4870',
+    fontSize: 13,
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  tabTextActive: {
+    color: '#e8e8ff',
   },
 });

@@ -44,6 +44,12 @@ class LockModule(private val reactContext: ReactApplicationContext)
   }
 
   @ReactMethod
+fun mirrorSchedules(schedulesJson: String) {
+  val prefs = reactContext.getSharedPreferences("tymeloc", Context.MODE_PRIVATE)
+  prefs.edit().putString("schedules_mirror", schedulesJson).apply()
+}
+
+  @ReactMethod
   fun stopLockService() {
     val prefs = reactContext.getSharedPreferences("tymeloc", Context.MODE_PRIVATE)
     prefs.edit().putLong("phoneLockUntil", 0L).apply()

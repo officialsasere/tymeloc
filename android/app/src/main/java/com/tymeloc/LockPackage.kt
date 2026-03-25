@@ -7,7 +7,10 @@ import com.facebook.react.uimanager.ViewManager
 
 class LockPackage : ReactPackage {
   override fun createNativeModules(ctx: ReactApplicationContext): List<NativeModule> =
-    listOf(LockModule(ctx))
+    listOf(LockModule(ctx),
+    
+      SchedulerModule(ctx) 
+    )
 
   override fun createViewManagers(ctx: ReactApplicationContext): List<ViewManager<*, *>> =
     emptyList()
