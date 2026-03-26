@@ -17,6 +17,27 @@ class LockModule(private val reactContext: ReactApplicationContext)
     promise.resolve(Settings.canDrawOverlays(reactContext))
   }
 
+    @ReactMethod
+  fun hasAccessibilityPermission(promise: Promise) {
+    val context = reactApplicationContext
+    val expectedService = "${context.packageName}/${LockAccessibilityService::class.java.canonicalName}"
+    val enabledServices = Settings.Secure.getString(
+      context.contentResolver,
+      Settings.Secure.ENABLED_ACCESSIBILITY_SERVICES
+    )
+    val enabled = enabledServices?.contains(expectedService) == true
+    promise.resolve(enabled)
+  }
+
+  @ReactMethod
+  fun requestAccessibilityPermission() {
+    val intent = Intent(Settings.ACTION_ACCESSIBILITY_SETTINGS).apply {
+      flags = Intent.FLAG_ACTIVITY_NEW_TASK
+    }
+    reactApplicationContext.startActivity(intent)
+  }
+
+
   @ReactMethod
   fun requestOverlayPermission() {
     val intent = Intent(

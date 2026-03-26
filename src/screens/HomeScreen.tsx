@@ -78,11 +78,21 @@ export function HomeScreen() {
 
 
 const handleLock = async (durationMs: number) => {
-  if (!hasOverlay) {
+   const isAccessibilityEnabled = await LockModule.hasAccessibilityPermission();
+  // if (!hasOverlay) {
+  //   Alert.alert(
+  //     'Permission needed',
+  //     'TymeLoc needs permission to draw over other apps.',
+  //     [{ text: 'Open Settings', onPress: () => LockModule.requestOverlayPermission() }]
+  //   );
+  //   return;
+  // }
+
+  if (!isAccessibilityEnabled) {
     Alert.alert(
-      'Permission needed',
-      'FocusLock needs permission to draw over other apps.',
-      [{ text: 'Open Settings', onPress: () => LockModule.requestOverlayPermission() }]
+      'Strict Mode Required',
+      'To prevent bypassing the lock, please enable Tymeloc in Accessibility Settings.',
+      [{ text: 'Open Settings', onPress: () => LockModule.requestAccessibilityPermission() }]
     );
     return;
   }
