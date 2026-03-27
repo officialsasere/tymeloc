@@ -1,6 +1,9 @@
 package com.tymeloc
 
 import android.app.*
+import android.media.RingtoneManager
+import android.media.AudioAttributes
+import android.media.MediaPlayer
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -169,6 +172,7 @@ class LockService : Service() {
 
       wm.addView(root, params)
       overlayView = root
+      playLockSound() 
       Log.d(TAG, "Overlay added successfully")
 
     } catch (e: Exception) {
@@ -200,6 +204,7 @@ class LockService : Service() {
     overlayView?.let {
       try {
         (getSystemService(Context.WINDOW_SERVICE) as WindowManager).removeView(it)
+        playUnlockSound()
         Log.d(TAG, "Overlay removed")
       } catch (e: Exception) {
         Log.e(TAG, "Remove error: ${e.message}")
@@ -244,6 +249,55 @@ class LockService : Service() {
         .createNotificationChannel(channel)
     }
   }
+
+  private fun playLockSound() {
+  try {
+    // Use the system notification sound as lock confirmation
+    // RingtoneManager gives us the default notification URI —
+    // no file needed, works on every Android device
+    val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION)
+    val ringtone = RingtoneManager.getRingtone(this, uri)
+    
+    // Set audio attributes so it plays through the correct channel
+    // USAGE_NOTIFICATION plays at notification volume, not media volume
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+      ringtone.audioAttributes = AudioAttributes.Builder()
+        .setUsage(AudioAttributes.USAGE_NOTIFICATION)
+        .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+        .build()
+    }
+    ringtone.play()
+    Log.d(TAG, "Lock sound played")
+  } catch (e: Exception) {
+    Log.e(TAG, "Lock sound failed: ${e.message}")
+  }
+}
+
+private fun playUnlockSound() {
+  try {
+    // Use the system alarm stream for unlock — slightly different tone
+    // so user can distinguish lock vs unlock by ear
+    val uri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM)
+    val mp = MediaPlayer().apply {
+      setDataSource(this@LockService, uri)
+      if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+        setAudioAttributes(
+          AudioAttributes.Builder()
+            .setUsage(AudioAttributes.USAGE_NOTIFICATION_EVENT)
+            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+            .build()
+        )
+      }
+      // isLooping = false by default — plays once then releases
+      setOnCompletionListener { it.release() }
+      prepare()
+      start()
+    }
+    Log.d(TAG, "Unlock sound played")
+  } catch (e: Exception) {
+    Log.e(TAG, "Unlock sound failed: ${e.message}")
+  }
+}
 
   override fun onDestroy() {
     Log.d(TAG, "onDestroy")

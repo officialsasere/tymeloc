@@ -17,7 +17,7 @@ import { useScheduler } from '../hooks/useScheduler';
 const { LockModule } = NativeModules;
 
 const DURATIONS = [
-  // { label: '1 min',  ms: 1 * 60 * 1000 },
+  { label: '1 min',  ms: 1 * 60 * 1000 },
   { label: '30 min',  ms: 30 * 60 * 1000 },
   { label: '1 hour',  ms: 60 * 60 * 1000 },
   { label: '2 hours', ms: 2 * 60 * 60 * 1000 },
