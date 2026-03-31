@@ -1,50 +1,61 @@
 // 📖 Zustand: https://docs.pmnd.rs/zustand/getting-started/introduction
-
 import { createMMKV } from 'react-native-mmkv';
 import { create } from 'zustand';
 
-
 const storage = createMMKV();
 
-
-// A schedule tells the app: "lock me at this time, unlock at this time, on these days"
 export type RepeatType = 'daily' | 'days' | 'range';
 
 export interface Schedule {
-  id: string;                  // unique id — we use Date.now().toString()
-  name: string;                // e.g. "Sleep", "Work focus"
-  lockHour: number;            // 0-23
-  lockMinute: number;          // 0-59
-  unlockHour: number;          // 0-23
-  unlockMinute: number;        // 0-59
+  id: string;
+  name: string;
+  lockHour: number;
+  lockMinute: number;
+  unlockHour: number;
+  unlockMinute: number;
   repeatType: RepeatType;
-  days: number[];              // [0,1,2,3,4,5,6] Sun=0 Mon=1 ... Sat=6 (used when repeatType='days')
-  startDate: string | null;    // 'YYYY-MM-DD' (used when repeatType='range')
-  endDate: string | null;      // 'YYYY-MM-DD' (used when repeatType='range')
+  days: number[];
+  startDate: string | null;
+  endDate: string | null;
   enabled: boolean;
 }
 
+// ── New: per-app lock ────────────────────────────────────────────────
+export interface LockedApp {
+  packageName: string;
+  appName: string;
+  lockUntil: number;       // timestamp ms
+  scheduleId?: string;     // optional — links to a schedule
+}
+
 interface LockStore {
-  phoneLockUntil: number;        // timestamp ms, 0 = not locked
+  // ── Phone lock ──────────────────────────────────────────────────────
+  phoneLockUntil: number;
   lockPhone: (ms: number) => void;
   unlockPhone: () => void;
   isLocked: () => boolean;
 
-
- // ── Schedules ───────────────────────────────────────────────────────
+  // ── Schedules ───────────────────────────────────────────────────────
   schedules: Schedule[];
   addSchedule: (s: Schedule) => void;
   updateSchedule: (id: string, changes: Partial<Schedule>) => void;
   deleteSchedule: (id: string) => void;
   toggleSchedule: (id: string) => void;
+
+  // ── App locks ───────────────────────────────────────────────────────
+  lockedApps: LockedApp[];
+  lockApp: (app: LockedApp) => void;
+  unlockApp: (packageName: string) => void;
+  isAppLocked: (packageName: string) => boolean;
 }
 
 export const useLockStore = create<LockStore>((set, get) => ({
+  // ── Phone lock ──────────────────────────────────────────────────────
   phoneLockUntil: storage.getNumber('phoneLockUntil') ?? 0,
 
   lockPhone: (durationMs) => {
     const until = Date.now() + durationMs;
-    storage.set('phoneLockUntil', until);   // survives reboot
+    storage.set('phoneLockUntil', until);
     set({ phoneLockUntil: until });
   },
 
@@ -54,7 +65,6 @@ export const useLockStore = create<LockStore>((set, get) => ({
   },
 
   isLocked: () => get().phoneLockUntil > Date.now(),
-
 
   // ── Schedules ───────────────────────────────────────────────────────
   schedules: JSON.parse(storage.getString('schedules') ?? '[]'),
@@ -85,5 +95,28 @@ export const useLockStore = create<LockStore>((set, get) => ({
     );
     storage.set('schedules', JSON.stringify(updated));
     set({ schedules: updated });
+  },
+
+  // ── App locks ───────────────────────────────────────────────────────
+  lockedApps: JSON.parse(storage.getString('lockedApps') ?? '[]'),
+
+  lockApp: (app) => {
+    // Replace if same packageName already exists, otherwise add
+    const existing = get().lockedApps.filter(a => a.packageName !== app.packageName);
+    const updated = [...existing, app];
+    storage.set('lockedApps', JSON.stringify(updated));
+    set({ lockedApps: updated });
+  },
+
+  unlockApp: (packageName) => {
+    const updated = get().lockedApps.filter(a => a.packageName !== packageName);
+    storage.set('lockedApps', JSON.stringify(updated));
+    set({ lockedApps: updated });
+  },
+
+  isAppLocked: (packageName) => {
+    const app = get().lockedApps.find(a => a.packageName === packageName);
+    if (!app) return false;
+    return app.lockUntil > Date.now();
   },
 }));

@@ -11,6 +11,9 @@ import { useLockStore } from '../store/useLockStore';
 import { useCountdown } from '../hooks/useCountdown';
 import { ScheduleListScreen } from './ScheduleListScreen';
 import { useScheduler } from '../hooks/useScheduler';
+import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { AppLockScreen } from './AppLockScreen';
 
 
 
@@ -37,7 +40,7 @@ export function HomeScreen() {
   const { phoneLockUntil, lockPhone, unlockPhone, isLocked } = useLockStore();
   const { done } = useCountdown(phoneLockUntil);
   const [hasOverlay, setHasOverlay] = useState(false);
-  const [activeTab, setActiveTab] = useState<'lock' | 'schedule'>('lock');
+  const [activeTab, setActiveTab] = useState<'lock' | 'schedule' | 'applock'>('lock');
   const locked = isLocked(); 
   console.log('Render HomeScreen - locked:', locked, 'phoneLockUntil:', phoneLockUntil, 'done:', done);
 
@@ -63,6 +66,17 @@ export function HomeScreen() {
     });
     return () => sub.remove();
   }, []);
+
+  // Add this useEffect inside HomeScreen
+useEffect(() => {
+  // Check if app was opened from the shortcut
+  // MainActivity passes 'openTab' extra which React Native
+  // can read via Linking or initial props
+  const openTab = (global as any).__initialOpenTab;
+  if (openTab === 'applock') {
+    setActiveTab('applock');
+  }
+}, []);
 
 
   // Auto-unlock when countdown reaches zero
@@ -121,7 +135,7 @@ const handleLock = async (durationMs: number) => {
 
   return (
    
-      <View style={styles.motherContainer}>
+      <SafeAreaView style={styles.motherContainer}>
       <Text style={styles.appName}>Tymeloc</Text>
 
       {/* Tab bar */}
@@ -142,9 +156,18 @@ const handleLock = async (durationMs: number) => {
           Schedule
         </Text>
       </TouchableOpacity>
+      <TouchableOpacity
+  style={[styles.tab, activeTab === 'applock' && styles.tabActive]}
+  onPress={() => setActiveTab('applock')}
+>
+  <Text style={[styles.tabText, activeTab === 'applock' && styles.tabTextActive]}>
+    App Lock
+  </Text>
+</TouchableOpacity>
     </View>
 
-    {activeTab === 'lock' ? (
+  
+    {activeTab === 'lock' && (
       <ScrollView contentContainerStyle={styles.container}>
         {/* <Text style={styles.appName}>Tymeloc</Text> */}
         <View style={styles.pickerSection}>
@@ -184,10 +207,10 @@ const handleLock = async (durationMs: number) => {
           </TouchableOpacity>
         )}
       </ScrollView>
-    ) : (
-      <ScheduleListScreen />
     )}
-    </View>
+    {activeTab === 'schedule' && <ScheduleListScreen />}
+    {activeTab === 'applock' && <AppLockScreen />}
+    </SafeAreaView>
    
   );
 }
@@ -211,7 +234,7 @@ const styles = StyleSheet.create({
     fontSize: 13,
     alignSelf: 'center',
     letterSpacing: 4,
-    padding: 20,
+    padding: 15,
     textTransform: 'uppercase',
     // marginBottom: 0,
   },

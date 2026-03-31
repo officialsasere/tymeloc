@@ -17,6 +17,12 @@ class LockModule(private val reactContext: ReactApplicationContext)
     promise.resolve(Settings.canDrawOverlays(reactContext))
   }
 
+  @ReactMethod
+fun mirrorLockedApps(lockedAppsJson: String) {
+  val prefs = reactContext.getSharedPreferences("tymeloc", Context.MODE_PRIVATE)
+  prefs.edit().putString("lockedApps", lockedAppsJson).apply()
+}
+
     @ReactMethod
   fun hasAccessibilityPermission(promise: Promise) {
     val context = reactApplicationContext
